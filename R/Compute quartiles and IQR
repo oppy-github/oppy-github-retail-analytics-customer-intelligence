@@ -1,0 +1,54 @@
+# Compute quartiles and IQR
+
+Q1 <- quantile(unique_customer_clean$Total_Spend, 0.25, na.rm = TRUE)
+Q3 <- quantile(unique_customer_clean$Total_Spend, 0.75, na.rm = TRUE)
+IQR_value <- Q3 - Q1
+
+# Define outlier cutoffs
+
+lower_bound <- Q1 - 1.5 * IQR_value
+upper_bound <- Q3 + 1.5 * IQR_value
+
+# Filter dataset to remove outliers
+
+unique_customer_clean_2 <- unique_customer_clean[
+  Total_Spend >= lower_bound & Total_Spend <= upper_bound
+]
+
+# Quick comparison of row counts
+
+cat("Original rows:", nrow(unique_customer_clean), "\n")
+cat("Rows after removing outliers:", nrow(unique_customer_clean_2), "\n")
+
+# Check summary stats after removal
+
+summary(unique_customer_clean_2$Total_Spend)
+
+summary(unique_customer_clean_2)
+
+colnames(unique_customer_clean_2)
+
+
+
+# visualize after removing extreme values
+
+ggplot(unique_customer_clean_2, aes(x = Total_Spend)) +
+  geom_histogram(bins = 50, fill = "darkgrey", color = "black") +
+  scale_x_log10(labels = scales::label_comma()) +
+  scale_y_continuous(labels = scales::label_comma()) +
+  labs(title = "Histogram of Customer Total Spend (Log Scale)",
+       x = "Total Spend (AUD, log scale)",
+       y = "Number of Customers") +
+  theme_minimal()
+
+
+
+
+# Boxplot on log scale (mirrors the histogram)
+ggplot(unique_customer_clean_2, aes(x = "", y = Total_Spend)) +
+  geom_boxplot(fill = "darkgrey", outlier.colour = "black", outlier.shape = 16) +
+  scale_y_log10(labels = scales::comma) +  # log scale on y-axis
+  labs(title = "Boxplot of Customer Total Spend (Log Scale)",
+       y = "Total Spend (AUD, log scale)",
+       x = "") +
+  theme_minimal()
