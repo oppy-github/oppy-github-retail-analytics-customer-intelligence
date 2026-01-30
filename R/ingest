@@ -1,1 +1,21 @@
-Load raw data and combine years into one dataset
+library(data.table)
+
+read_folder <- function(folder_name){
+  files <- list.files(folder_name, pattern = "\\.csv$", full.names = TRUE)
+  data_list <- lapply(files, function(f) {
+    fread(f, colClasses = list(character = 8))
+  })
+  rbindlist(data_list, use.names = TRUE, fill = TRUE)
+}
+
+supermarket_2013 <- read_folder("2013")
+supermarket_2014 <- read_folder("2014")
+supermarket_2015 <- read_folder("2015")
+
+supermarket_data <- rbindlist(
+  list(supermarket_2013, supermarket_2014, supermarket_2015),
+  use.names = TRUE, fill = TRUE
+)
+
+fwrite(supermarket_data, "data/samples/supermarket_data.csv")
+
