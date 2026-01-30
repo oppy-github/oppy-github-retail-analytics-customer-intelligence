@@ -1,23 +1,35 @@
-library(data.table)
 library(lubridate)
 
-supermarket_data <- fread("data/samples/supermarket_data.csv")
-
+# Convert Sale_Date to Date format and create Year column
 supermarket_data[, Sale_Date := as.IDate(Sale_Date, format = "%Y-%m-%d")]
 supermarket_data[, Year := year(Sale_Date)]
 
-cust_2013 <- unique(supermarket_data[Year == 2013, U_S_A_Customer_No])
-cust_2014 <- unique(supermarket_data[Year == 2014, U_S_A_Customer_No])
-cust_2015 <- unique(supermarket_data[Year == 2015, U_S_A_Customer_No])
 
+# Get unique customer IDs for each year
+cust_2013 <- unique(supermarket_data[Year == 2013, US_A_Customer_No])
+cust_2014 <- unique(supermarket_data[Year == 2014, US_A_Customer_No])
+cust_2015 <- unique(supermarket_data[Year == 2015, US_A_Customer_No])
+
+
+# Find customers who appear in all three years (regular customers)
 regular_customers <- cust_2014[
   cust_2014 %in% cust_2013 & cust_2014 %in% cust_2015
 ]
 
+
+# Filter dataset for those customers in 2014
 supermarket_regular_customers_2014 <- supermarket_data[
-  Year == 2014 & U_S_A_Customer_No %in% regular_customers
+  Year == 2014 & US_A_Customer_No %in% regular_customers
 ]
 
+# Quick checks
+length(unique(supermarket_regular_customers_2014$US_A_Customer_No))   # number of regular customers
+
+dim(supermarket_regular_customers_2014)                                # rows and columns of filtered data
+
+
+
+# Drop unnecessary columns and create new data frame
 supermarket_customer_segmentation <- supermarket_regular_customers_2014[, !c(
   "Sale_Time",
   "Receipt_Line_No",
@@ -28,20 +40,97 @@ supermarket_customer_segmentation <- supermarket_regular_customers_2014[, !c(
   "Offer"
 ), with = FALSE]
 
-supermarket_customer_segmentation <- 
-  supermarket_customer_segmentation[!is.na(U_S_A_Customer_No)]
 
-supermarket_customer_segmentation[, 
-  Trip_ID := paste(U_S_A_Receipt_No1, Sale_Date, sep = "_")
+# check structure
+str(supermarket_customer_segmentation)
+
+dim(supermarket_customer_segmentation)
+
+colnames(supermarket_customer_segmentation)
+
+unique(supermarket_customer_segmentation$Sale_Date)
+
+
+
+# Count of NA and non-NA customer IDs
+supermarket_customer_segmentation[, .(
+  non_missing = sum(!is.na(US_A_Customer_No)),
+  missing = sum(is.na(US_A_Customer_No)),
+  total = .N,
+  percent_missing = round(sum(is.na(US_A_Customer_No)) / .N * 100, 2)
+)]
+
+
+
+# Drop rows with missing customer IDs
+supermarket_customer_segmentation_customer_id_na_dropped <- supermarket_customer_segmentation[
+  !is.na(US_A_Customer_No)
 ]
 
-trip_level_data <- supermarket_customer_segmentation[, .(
-  Customer_ID = unique(U_S_A_Customer_No),
-  Trip_Date = unique(Sale_Date),
-  Total_Trip_Spend = max(Total_Sale_Amount_InclusiveGST, na.rm = TRUE),
-  Total_Trip_Quantity = sum(Quantity_Sold, na.rm = TRUE),
-  Num_Departments = uniqueN(Department_Name)
+
+dim(supermarket_customer_segmentation_customer_id_na_dropped)
+
+
+
+
+# Count occurrences of each receipt number
+receipt_counts <- supermarket_customer_segmentation_customer_id_na_dropped[, .N, by = US_A_Receipt_No1]
+
+
+# Filter where a receipt number appears more than once
+repeated_receipts <- receipt_counts[N > 1]
+
+
+# Get total number of repeated receipt numbers
+n_repeated <- nrow(repeated_receipts)
+
+
+# Show result
+n_repeated
+
+
+
+# Step 1: Make a working copy of the cleaned dataset
+customer_segmentation_clean <- copy(supermarket_customer_segmentation_customer_id_na_dropped)
+
+
+# Step 2: Create a unique trip ID by combining Receipt Number and Sale Date
+# This ensures each Trip_ID represents a distinct shopping trip
+# This is a practical example a customer went on a trip to the supermarket.
+customer_segmentation_clean[, Trip_ID := paste(US_A_Receipt_No1, Sale_Date, sep = "_")]
+
+
+customer_segmentation_clean[duplicated(Trip_ID)]
+
+
+
+
+
+# Step 3: Aggregate to one row per trip
+# Collapse all item-level rows into a single record per Trip_ID (receipt + date)
+# max was used in "Total_Trip_Spend" to ensure where there are duplicate amounts 
+# (e.g., main payment + refund, or system duplication). The max amount was used assuming this was the original amount paid on the trip. 
+
+trip_level_data <- customer_segmentation_clean[, .(
+  Customer_ID       = unique(US_A_Customer_No),                           # Customer making the trip
+  Trip_Date         = unique(Sale_Date),                                   # Date of the trip
+  Total_Trip_Spend  = max(Total_Sale_Amount_InclusiveGST, na.rm = TRUE),   # Receipt total (take max to avoid duplicates)
+  Total_Trip_Quantity = sum(Quantity_Sold, na.rm = TRUE),                  # Total items purchased
+  Num_Departments   = uniqueN(Department_Name)                             # Distinct departments visited
 ), by = Trip_ID]
 
-fwrite(trip_level_data, "data/samples/trip_level_data.csv")
 
+
+
+
+# Checks — number of rows and sample output
+
+dim(trip_level_data)   # Should return number of trips × 5 columns
+
+head(trip_level_data)  # Preview first few trips
+
+# Number of unique customers represented
+length(unique(trip_level_data$Customer_ID))
+
+# Date range of trips
+range(trip_level_data$Trip_Date)
