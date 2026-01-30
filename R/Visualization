@@ -1,0 +1,74 @@
+library(ggplot2)
+library(scales)
+
+
+# Trips by Day of Week
+ggplot(trip_level_data3, aes(x = Trip_Day)) +
+  geom_bar(fill = "darkgrey") +   # draw the bars
+  geom_text(stat = "count",    # add counts above each bar
+            aes(label = ..count..), 
+            vjust = -0.5,      # adjust vertical position
+            color = "black", 
+            size = 3) +
+  labs(title = "Trips by Day of Week",
+       x = "Day of Week",
+       y = "Number of Trips (in Thousands)") +
+  scale_y_continuous(labels = label_number(scale = 1e-3, suffix = "K")) + # format y-axis in 'K'
+  theme_minimal()
+
+
+# Trips by Month
+ggplot(trip_level_data3, aes(x = Trip_Month)) +
+  geom_bar(fill = "darkgrey") +   # draw the bars
+  geom_text(stat = "count",       # add counts above each bar
+            aes(label = ..count..), 
+            vjust = -0.5, color = "black", size = 3) +
+  labs(title = "Trips by Month",
+       x = "Month",
+       y = "Number of Trips (in Thousands)") +
+  scale_y_continuous(labels = label_number(scale = 1e-3, suffix = "K")) +
+  theme_minimal()
+
+
+# Trips by Quarter
+ggplot(trip_level_data3, aes(x = Trip_Qtr)) +
+  geom_bar(fill = "darkgrey") +
+  geom_text(stat = "count",
+            aes(label = ..count..),
+            vjust = -0.5, color = "black", size = 3) +
+  labs(title = "Trips by Quarter",
+       x = "Quarter",
+       y = "Number of Trips (in Thousands)") +
+  scale_y_continuous(labels = label_number(scale = 1e-3, suffix = "K")) +
+  theme_minimal()
+
+
+# Weekend vs Weekday Trips
+# Create summary table
+week_summary <- trip_level_data3[, .N, by = Trip_Weekend]
+week_summary[, Label := ifelse(Trip_Weekend == 1, "Weekend", "Weekday")]
+
+ggplot(week_summary, aes(x = Label, y = N)) +
+  geom_col(fill = "darkgrey") +
+  geom_text(aes(label = N), vjust = -0.5, color = "black", size = 3) +
+  labs(title = "Weekend vs Weekday Trips",
+       x = "",
+       y = "Number of Trips (in Thousands)") +
+  scale_y_continuous(labels = label_number(scale = 1e-3, suffix = "K")) +
+  theme_minimal()
+
+
+# Aggregate trips by month
+trips_by_month <- trip_level_data3[, .N, by = Trip_Month]
+trips_by_month$Trip_Month <- factor(trips_by_month$Trip_Month, 
+                                    levels = month.abb, ordered = TRUE)
+
+ggplot(trips_by_month, aes(x = Trip_Month, y = N, group = 1)) +
+  geom_line(color = "darkgrey", size = 1) +
+  geom_point(color = "black", size = 2) +
+  geom_text(aes(label = N), vjust = -0.5, size = 3) +
+  labs(title = "Number of Trips by Month",
+       x = "Month",
+       y = "Number of Trips (in Thousands)") +
+  scale_y_continuous(labels = label_number(scale = 1e-3, suffix = "K")) +
+  theme_minimal()
