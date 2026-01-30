@@ -1,0 +1,52 @@
+# 1. Prepare Data
+
+# Select variables for clustering
+customers_cluster_vars <- unique_customer_clean_2[, .(
+  Total_Spend, 
+  Avg_Basket_Size, 
+  Max_Departments, 
+  Avg_Departments
+)]
+
+# Scale variables (important for clustering)
+cluster_scaled <- scale(customers_cluster_vars)
+
+
+
+# 2. Elbow Method - look for the “bend” (knee). That’s one candidate.
+
+# Install the packages
+install.packages("factoextra")
+library(ggplot2)
+library(factoextra)
+
+
+set.seed(123)  # reproducibility
+fviz_nbclust(cluster_scaled, kmeans, method = "wss") +
+  labs(title = "Elbow Method for Choosing k")
+
+
+
+# 3. Silhouette Method - shows where cluster quality is highest.
+
+fviz_nbclust(cluster_scaled, kmeans, method = "silhouette") +
+  labs(title = "Silhouette Method for Choosing k")
+
+
+
+
+# 4. Run K-means with chosen k (example: k=3)
+
+set.seed(123)
+km_res <- kmeans(cluster_scaled, centers = 3, nstart = 25)
+
+
+# 5. Visualize Clusters
+
+fviz_cluster(km_res, data = cluster_scaled,
+             ellipse.type = "norm",
+             palette = "grey",
+             ggtheme = theme_minimal())
+
+# Add cluster assignments back to the dataset
+unique_customer_clean_2[, Cluster := km_res$cluster]
