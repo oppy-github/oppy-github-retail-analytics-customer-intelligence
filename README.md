@@ -3,7 +3,7 @@ Customer insights project showing how retail transaction data can be turned into
 
 
 
-Retail Customer Analytics — Supermarket Transactions (2013–2015)
+Retail Customer Analytics, Supermarket Transactions (2013–2015)
 
 Introduction
 
@@ -67,11 +67,11 @@ Customer value concentration: A smaller group of high-value customers drives a d
 
 Three clear segments:
 
-Light Shoppers — low spend, infrequent visits, limited department range.
+Light Shoppers: low spend, infrequent visits, limited department range.
 
-Steady Shoppers — the largest group, consistent and reliable contributors.
+Steady Shoppers: the largest group, consistent and reliable contributors.
 
-Premium Bulk Buyers — smaller in number but high spend and large baskets.
+Premium Bulk Buyers: smaller in number but high spend and large baskets.
 
 Seasonality: Sales and trips peak mid-year and in December, with noticeably lower activity toward the end of the year.
 
