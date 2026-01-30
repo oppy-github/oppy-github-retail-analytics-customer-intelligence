@@ -1,1 +1,47 @@
-Data clean
+library(data.table)
+library(lubridate)
+
+supermarket_data <- fread("data/samples/supermarket_data.csv")
+
+supermarket_data[, Sale_Date := as.IDate(Sale_Date, format = "%Y-%m-%d")]
+supermarket_data[, Year := year(Sale_Date)]
+
+cust_2013 <- unique(supermarket_data[Year == 2013, U_S_A_Customer_No])
+cust_2014 <- unique(supermarket_data[Year == 2014, U_S_A_Customer_No])
+cust_2015 <- unique(supermarket_data[Year == 2015, U_S_A_Customer_No])
+
+regular_customers <- cust_2014[
+  cust_2014 %in% cust_2013 & cust_2014 %in% cust_2015
+]
+
+supermarket_regular_customers_2014 <- supermarket_data[
+  Year == 2014 & U_S_A_Customer_No %in% regular_customers
+]
+
+supermarket_customer_segmentation <- supermarket_regular_customers_2014[, !c(
+  "Sale_Time",
+  "Receipt_Line_No",
+  "Total_Receipt_Lines",
+  "Barcode_Item",
+  "Item_Description",
+  "Commodity_Name",
+  "Offer"
+), with = FALSE]
+
+supermarket_customer_segmentation <- 
+  supermarket_customer_segmentation[!is.na(U_S_A_Customer_No)]
+
+supermarket_customer_segmentation[, 
+  Trip_ID := paste(U_S_A_Receipt_No1, Sale_Date, sep = "_")
+]
+
+trip_level_data <- supermarket_customer_segmentation[, .(
+  Customer_ID = unique(U_S_A_Customer_No),
+  Trip_Date = unique(Sale_Date),
+  Total_Trip_Spend = max(Total_Sale_Amount_InclusiveGST, na.rm = TRUE),
+  Total_Trip_Quantity = sum(Quantity_Sold, na.rm = TRUE),
+  Num_Departments = uniqueN(Department_Name)
+), by = Trip_ID]
+
+fwrite(trip_level_data, "data/samples/trip_level_data.csv")
+
