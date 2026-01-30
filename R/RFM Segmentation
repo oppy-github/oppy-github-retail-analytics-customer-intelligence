@@ -1,0 +1,113 @@
+# RFM Segmentation
+
+
+# Work with cleaned dataset
+rfm_data <- copy(unique_customer_clean_2)
+
+
+# Step 2: Ensure date columns are proper Date class
+rfm_data[, First_Trip := as.Date(First_Trip)]
+rfm_data[, Last_Trip  := as.Date(Last_Trip)]
+
+# Define analysis date (end of dataset)
+analysis_date <- as.Date("2014-12-31")
+
+# 1. Calculate R, F, M
+rfm_data[, Recency := as.numeric(analysis_date - Last_Trip)]  # days since last purchase
+rfm_data[, Frequency := Unique_Customer_Trips]                # total trips
+rfm_data[, Monetary := Total_Spend]                           # total spend
+
+# 2. Assign scores (1 = low, 5 = high)
+rfm_data[, R_Score := cut(-Recency, 
+                          breaks = quantile(-Recency, probs = seq(0, 1, 0.2), na.rm = TRUE), 
+                          labels = 1:5, include.lowest = TRUE)]
+rfm_data[, F_Score := cut(Frequency, 
+                          breaks = quantile(Frequency, probs = seq(0, 1, 0.2), na.rm = TRUE), 
+                          labels = 1:5, include.lowest = TRUE)]
+rfm_data[, M_Score := cut(Monetary, 
+                          breaks = quantile(Monetary, probs = seq(0, 1, 0.2), na.rm = TRUE), 
+                          labels = 1:5, include.lowest = TRUE)]
+
+# Convert factors to numeric
+rfm_data[, `:=`(
+  R_Score = as.integer(as.character(R_Score)),
+  F_Score = as.integer(as.character(F_Score)),
+  M_Score = as.integer(as.character(M_Score))
+)]
+
+# 3. Create overall RFM Score (concatenated or summed)
+rfm_data[, RFM_Score := paste(R_Score, F_Score, M_Score, sep = "")]
+rfm_data[, RFM_Total := R_Score + F_Score + M_Score]
+
+# Quick check
+head(rfm_data[, .(Customer_ID, Recency, Frequency, Monetary, R_Score, F_Score, M_Score, RFM_Score, RFM_Total)])
+
+
+summary(rfm_data)
+
+
+
+
+
+# Define customer segments
+rfm_data[, Segment := fifelse(RFM_Total >= 12, "Premium Customers",
+                              fifelse(RFM_Total >= 8 & RFM_Total <= 11, "Reoccurring Customers",
+                                      "Require Follow-Up Customers"))]
+
+# Quick distribution check
+table(rfm_data$Segment)
+
+# Optional: Summary by segment
+rfm_summary <- rfm_data[, .(
+  Count = .N,
+  Avg_Recency = round(mean(Recency), 1),
+  Avg_Frequency = round(mean(Frequency), 1),
+  Avg_Monetary = round(mean(Monetary), 2)
+), by = Segment]
+
+print(rfm_summary)
+
+
+
+
+
+library(ggplot2)
+
+# Use your rfm_summary table
+# Example: rfm_summary with Segment, Count, Avg_Recency, Avg_Frequency, Avg_Monetary
+
+# Bar chart of customer counts
+ggplot(rfm_summary, aes(x = Segment, y = Count, fill = Segment)) +
+  geom_col(fill = "darkgrey") +
+  geom_text(aes(label = Count), vjust = -0.5, size = 4) +
+  labs(title = "Customer Segments by Count",
+       y = "Number of Customers",
+       x = "Segment") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+# Optional: Bar chart showing average spend per segment
+ggplot(rfm_summary, aes(x = Segment, y = Avg_Monetary, fill = Segment)) +
+  geom_col(fill = "darkgrey") +
+  geom_text(aes(label = round(Avg_Monetary, 0)), vjust = -0.5, size = 4) +
+  labs(title = "Average Spend by Customer Segment",
+       y = "Average Total Spend (AUD)",
+       x = "Segment") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+
+# Get top 10 customers by spend within each segment
+
+# Ensure rfm_data has Segment column
+# (if not already created, run segmentation rules first)
+# Example:
+# rfm_data[, Segment := fifelse(RFM_Total >= 12, "Premium Customers",
+#                        fifelse(RFM_Total >= 8, "Reoccurring Customers",
+#                                "Require Follow-Up Customers"))]
+
+# Get top 10 customers by Total Spend per segment
+top_customers <- rfm_data[order(-Monetary), .SD[1:10], by = Segment]
+
+# Select key columns to view
+top_customers[, .(Segment, Customer_ID, Monetary, Frequency, Recency)]
