@@ -1,1 +1,46 @@
+# features engineering 
 
+# Make a copy of the trip data
+trip_level_data2 <- copy(trip_level_data)
+
+
+# Create new time-based columns
+trip_level_data2[, Trip_Day   := format(Trip_Date, "%a")]          # Day of week (Mon, Tue, ...)
+trip_level_data2[, Trip_Month := format(Trip_Date, "%b")]          # Month (Jan, Feb, ...)
+trip_level_data2[, Trip_Qtr   := paste0("Q", quarter(Trip_Date))]  # Quarter (Q1, Q2, Q3, Q4)
+
+
+# Add weekend/weekday flags
+trip_level_data2[, Trip_Weekend := fifelse(Trip_Day %in% c("Sat", "Sun"), 1, 0)]  # 1 = weekend, 0 = not
+trip_level_data2[, Trip_Weekday := fifelse(Trip_Day %in% c("Mon", "Tue", "Wed", "Thu", "Fri"), 1, 0)]
+
+
+# Quick check of new columns
+head(trip_level_data2[, .(Trip_Date, Trip_Day, Trip_Month, Trip_Qtr, Trip_Weekday, Trip_Weekend)])
+
+
+colnames(trip_level_data2)
+
+
+# Total number of unique trips by Trip_ID
+length(unique(trip_level_data2$Trip_ID))
+
+# Total number of rows
+dim(trip_level_data2) 
+
+
+# Remove duplicate Trip_IDs, keep first occurrence
+# Duplicates could have been "Staff used “generic” loyalty cards" or items were returned, refunded, or exchanged
+
+trip_level_data3 <- trip_level_data2[!duplicated(Trip_ID)]
+
+
+# Total number of unique trips by Trip_ID
+length(unique(trip_level_data3$Trip_ID))
+
+
+colnames(trip_level_data3)
+
+
+# Total number of rows
+dim(trip_level_data3)
