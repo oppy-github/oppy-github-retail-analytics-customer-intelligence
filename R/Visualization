@@ -17,6 +17,7 @@ ggplot(trip_level_data3, aes(x = Trip_Day)) +
   theme_minimal()
 
 
+
 # Trips by Month
 ggplot(trip_level_data3, aes(x = Trip_Month)) +
   geom_bar(fill = "darkgrey") +   # draw the bars
@@ -30,6 +31,7 @@ ggplot(trip_level_data3, aes(x = Trip_Month)) +
   theme_minimal()
 
 
+
 # Trips by Quarter
 ggplot(trip_level_data3, aes(x = Trip_Qtr)) +
   geom_bar(fill = "darkgrey") +
@@ -41,6 +43,7 @@ ggplot(trip_level_data3, aes(x = Trip_Qtr)) +
        y = "Number of Trips (in Thousands)") +
   scale_y_continuous(labels = label_number(scale = 1e-3, suffix = "K")) +
   theme_minimal()
+
 
 
 # Weekend vs Weekday Trips
@@ -58,6 +61,10 @@ ggplot(week_summary, aes(x = Label, y = N)) +
   theme_minimal()
 
 
+
+
+
+
 # Aggregate trips by month
 trips_by_month <- trip_level_data3[, .N, by = Trip_Month]
 trips_by_month$Trip_Month <- factor(trips_by_month$Trip_Month, 
@@ -72,3 +79,85 @@ ggplot(trips_by_month, aes(x = Trip_Month, y = N, group = 1)) +
        y = "Number of Trips (in Thousands)") +
   scale_y_continuous(labels = label_number(scale = 1e-3, suffix = "K")) +
   theme_minimal()
+
+
+
+
+# unique customers (one row per customer)
+
+
+# Step 1: Create one row per customer with unique ID
+
+unique_customer_clean <- trip_level_data3[, .(
+  
+  # Trips
+  Unique_Customer_Trips = uniqueN(Trip_ID),                         # distinct trips
+  
+  # Spending
+  Total_Spend = round(sum(Total_Trip_Spend, na.rm = TRUE), 2),      # total spend
+  Avg_Spend_Per_Trip = round(mean(Total_Trip_Spend, na.rm = TRUE), 2), # avg spend per trip
+  
+  # Basket size
+  Total_Items = round(sum(Total_Trip_Quantity, na.rm = TRUE), 2),   # total items
+  Avg_Basket_Size = round(mean(Total_Trip_Quantity, na.rm = TRUE), 2), # avg basket size
+  
+  # Departments
+  Max_Departments = round(max(Num_Departments, na.rm = TRUE), 2),   # max depts visited in a trip
+  Avg_Departments = round(mean(Num_Departments, na.rm = TRUE), 2),  # avg depts per trip
+  
+  # Timeline
+  First_Trip = min(Trip_Date, na.rm = TRUE),                        # first trip date
+  Last_Trip  = max(Trip_Date, na.rm = TRUE)                         # last trip date
+  
+), by = Customer_ID]
+
+# Step 2: Add a unique sequential customer ID
+unique_customer_clean[, Unique_Customer_ID := .I]
+
+# Reorder columns for clarity (ID first)
+setcolorder(unique_customer_clean, c("Customer_ID", "Unique_Customer_ID", 
+                                     "Unique_Customer_Trips", "Total_Spend", 
+                                     "Avg_Spend_Per_Trip", "Total_Items", 
+                                     "Avg_Basket_Size", "Max_Departments", 
+                                     "Avg_Departments", "First_Trip", "Last_Trip"))
+
+# Quick check
+dim(unique_customer_clean)
+head(unique_customer_clean)
+
+
+summary(unique_customer_clean)
+
+# summary tables indicates presence of extreme outlines. 
+
+
+
+# visualize for extreme values
+
+ggplot(unique_customer_clean, aes(x = Total_Spend)) +
+  geom_histogram(bins = 50, fill = "darkgrey", color = "black") +
+  scale_x_log10(labels = scales::label_comma()) +
+  scale_y_continuous(labels = scales::label_comma()) +
+  labs(title = "Histogram of Customer Total Spend (Log Scale)",
+       x = "Total Spend (AUD, log scale)",
+       y = "Number of Customers") +
+  theme_minimal()
+
+
+
+
+# Boxplot on log scale (mirrors the histogram)
+ggplot(unique_customer_clean, aes(x = "", y = Total_Spend)) +
+  geom_boxplot(fill = "darkgrey", outlier.colour = "black", outlier.shape = 16) +
+  scale_y_log10(labels = scales::comma) +  # log scale on y-axis
+  labs(title = "Boxplot of Customer Total Spend (Log Scale)",
+       y = "Total Spend (AUD, log scale)",
+       x = "") +
+  theme_minimal()
+
+
+
+
+# Both plots above visualizes extreme values 
+# Next step is to use IQR (Interquartile Range) method, 
+# also known as Tukey’s rule to remove outlier.
