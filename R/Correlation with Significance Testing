@@ -1,0 +1,40 @@
+# Install the packages
+install.packages("Hmisc")
+install.packages("corrplot")
+
+# Load libraries
+library(Hmisc)         # for rcorr (correlation + p-values)
+library(corrplot)      # for visualization
+
+
+# Step 1: Select clustering variables
+clustering_vars <- unique_customer_clean_2[, .(
+  Total_Spend,
+  Avg_Spend_Per_Trip,
+  Total_Items,
+  Avg_Basket_Size,
+  Max_Departments,
+  Avg_Departments
+)]
+
+
+# Step 2: Compute correlations with p-values
+cor_results <- Hmisc::rcorr(as.matrix(clustering_vars), type = "pearson")
+
+
+# Extract correlation matrix and p-value matrix
+cor_matrix <- cor_results$r
+p_matrix   <- cor_results$P
+
+
+# Step 3: Print correlation values and significance
+print(round(cor_matrix, 2))
+print(round(p_matrix, 4))   # p-values rounded to 4 decimals
+
+
+# Step 4: Visualize correlation heatmap with significance
+corrplot(cor_matrix, method = "color", type = "upper",
+         addCoef.col = "black", tl.col = "black", tl.srt = 45,
+         p.mat = p_matrix, sig.level = 0.05, insig = "blank") 
+
+# Cells with p > 0.05 will be left blank
